@@ -1,3 +1,24 @@
+## v4.0.0-alpha.8
+
+* Rolling back native support for Opera Browser
+* Added new ieOptions capabilities:
+    - fileUploadDialogTimeout
+    - setEdgePath
+    - setEdgeChromium
+    - setScrollBehavior
+    - For consistent naming, deprecating `addArguments(...args)` in favor of `addBrowserCommandSwitches(...args)`
+    
+* Added relative locators
+* Added Chrome DevTools Protocol (CDP) support
+* Added support for BASIC authentication.
+* Added listener for DOM mutations.
+* Added support for listening out for console log events.
+* Added support listening js exceptions using CDP
+
+### API Changes
+
+* Added the 'opera' module
+
 ## v4.0.0-alpha.4
 
 ### Changes

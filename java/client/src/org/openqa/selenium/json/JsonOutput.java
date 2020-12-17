@@ -17,6 +17,7 @@
 
 package org.openqa.selenium.json;
 
+import org.openqa.selenium.internal.Require;
 import org.openqa.selenium.logging.LogLevelMapping;
 
 import java.io.Closeable;
@@ -25,6 +26,8 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Collections;
@@ -46,7 +49,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public class JsonOutput implements Closeable {
   private static final Logger LOG = Logger.getLogger(JsonOutput.class.getName());
-  private static final int MAX_DEPTH = 5;
+  private static final int MAX_DEPTH = 10;
 
   private static final Predicate<Class<?>> GSON_ELEMENT;
   static {
@@ -101,9 +104,10 @@ public class JsonOutput implements Closeable {
   private String indent = "";
   private String lineSeparator = "\n";
   private String indentBy = "  ";
+  private boolean writeClassName = true;
 
   JsonOutput(Appendable appendable) {
-    this.appendable = Objects.requireNonNull(appendable);
+    this.appendable = Require.nonNull("Underlying appendable", appendable);
 
     this.appender =
         str -> {
@@ -125,11 +129,12 @@ public class JsonOutput implements Closeable {
     builder.put(Number.class::isAssignableFrom, (obj, depth) -> append(obj.toString()));
     builder.put(Boolean.class::isAssignableFrom, (obj, depth) -> append((Boolean) obj ? "true" : "false"));
     builder.put(Date.class::isAssignableFrom, (obj, depth) -> append(String.valueOf(MILLISECONDS.toSeconds(((Date) obj).getTime()))));
+    builder.put(Instant.class::isAssignableFrom, (obj, depth) -> append(asString(DateTimeFormatter.ISO_INSTANT.format((Instant) obj))));
     builder.put(Enum.class::isAssignableFrom, (obj, depth) -> append(asString(obj)));
     builder.put(File.class::isAssignableFrom, (obj, depth) -> append(((File) obj).getAbsolutePath()));
     builder.put(URI.class::isAssignableFrom, (obj, depth) -> append(asString((obj).toString())));
     builder.put(URL.class::isAssignableFrom, (obj, depth) -> append(asString(((URL) obj).toExternalForm())));
-    builder.put(UUID.class::isAssignableFrom, (obj, depth) -> append(asString(((UUID) obj).toString())));
+    builder.put(UUID.class::isAssignableFrom, (obj, depth) -> append(asString(obj.toString())));
     builder.put(Level.class::isAssignableFrom, (obj, depth) -> append(asString(LogLevelMapping.getName((Level) obj))));
     builder.put(
         GSON_ELEMENT,
@@ -205,6 +210,11 @@ public class JsonOutput implements Closeable {
   public JsonOutput setPrettyPrint(boolean enablePrettyPrinting) {
     this.lineSeparator = enablePrettyPrinting ? "\n" : "";
     this.indentBy = enablePrettyPrinting ? "  " : "";
+    return this;
+  }
+
+  public JsonOutput writeClassName(boolean writeClassName) {
+    this.writeClassName = writeClassName;
     return this;
   }
 
@@ -302,8 +312,14 @@ public class JsonOutput implements Closeable {
 
     String.valueOf(obj)
         .chars()
-        .mapToObj(i -> ESCAPES.getOrDefault(i, "" + (char) i))
-        .forEach(toReturn::append);
+        .forEach(i -> {
+          String escaped = ESCAPES.get(i);
+          if (escaped != null) {
+            toReturn.append(escaped);
+          } else {
+            toReturn.append((char) i);
+          }
+        });
 
     toReturn.append('"');
 
@@ -367,8 +383,15 @@ public class JsonOutput implements Closeable {
         continue;
       }
 
-      name(pd.getName());
-      write(pd.getReadMethod().apply(toConvert), maxDepth - 1);
+      if (!writeClassName && "class".equals(pd.getName())) {
+        continue;
+      }
+
+      Object value = pd.getReadMethod().apply(toConvert);
+      if (!Optional.empty().equals(value)) {
+        name(pd.getName());
+        write(value, maxDepth - 1);
+      }
     }
     endObject();
   }

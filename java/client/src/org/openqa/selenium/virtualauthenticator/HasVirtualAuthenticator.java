@@ -17,14 +17,19 @@
 
 package org.openqa.selenium.virtualauthenticator;
 
-import org.openqa.selenium.virtualauthenticator.VirtualAuthenticator;
-import org.openqa.selenium.virtualauthenticator.VirtualAuthenticatorOptions;
-
 /**
  * Interface implemented by each driver that allows access to the virtual authenticator API.
  */
 public interface HasVirtualAuthenticator {
-  public VirtualAuthenticator addVirtualAuthenticator(VirtualAuthenticatorOptions options);
+  /**
+   * Adds a virtual authenticator with the given options.
+   * @return the new virtual authenticator.
+   */
+  VirtualAuthenticator addVirtualAuthenticator(VirtualAuthenticatorOptions options);
 
-  public void removeVirtualAuthenticator(VirtualAuthenticator authenticator);
+  /**
+   * Removes a previously added virtual authenticator. The authenticator is no
+   * longer valid after removal, so no methods may be called.
+   */
+  void removeVirtualAuthenticator(VirtualAuthenticator authenticator);
 }

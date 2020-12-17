@@ -64,7 +64,7 @@ module Selenium
           expect(driver.find_elements(class_name: 'redbox')).to be_empty
         end
 
-        it 'should return after first attempt to find many after disabling implicit waits', except: {browser: :firefox, platform: :windows} do
+        it 'should return after first attempt to find many after disabling implicit waits' do
           add = driver.find_element(id: 'adder')
 
           driver.manage.timeouts.implicit_wait = 3
@@ -76,11 +76,18 @@ module Selenium
       end
 
       context 'page loads' do
-        # w3c default is 300,000
-        after { driver.manage.timeouts.page_load = 300000 }
+        before { driver.manage.timeouts.page_load = 2 }
 
-        it 'should be able to set the page load timeout' do
-          expect { driver.manage.timeouts.page_load = 2 }.not_to raise_exception
+        after { driver.manage.timeouts.page_load = 300 }
+
+        it 'should timeout if page takes too long to load' do
+          expect { driver.navigate.to url_for('sleep?time=3') }.to raise_error(WebDriver::Error::TimeoutError)
+        end
+
+        it 'should timeout if page takes too long to load after click', except: {browser: %i[safari safari_preview]} do
+          driver.navigate.to url_for('page_with_link_to_slow_loading_page.html')
+
+          expect { driver.find_element(id: 'link-to-slow-loading-page').click }.to raise_error(WebDriver::Error::TimeoutError)
         end
       end
     end

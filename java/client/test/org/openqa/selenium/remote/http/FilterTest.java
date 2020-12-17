@@ -20,12 +20,14 @@ package org.openqa.selenium.remote.http;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.openqa.selenium.remote.http.HttpMethod.GET;
 
-import com.google.common.collect.ImmutableList;
-
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.openqa.selenium.testing.UnitTests;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
+@Category(UnitTests.class)
 public class FilterTest {
 
   @Test
@@ -65,6 +67,34 @@ public class FilterTest {
     assertThat(res).isNotNull();
     // Because the headers are applied to the response _after_ the request has been processed,
     // we expect to see them in reverse order.
-    assertThat(res.getHeaders("cheese")).isEqualTo(ImmutableList.of("brie", "cheddar"));
+    assertThat(res.getHeaders("cheese")).containsExactly("brie", "cheddar");
+  }
+
+  @Test
+  public void eachFilterShouldOnlybeCalledOnce() {
+    AtomicInteger rootCalls = new AtomicInteger(0);
+
+    HttpHandler root = req -> {
+      rootCalls.incrementAndGet();
+      return new HttpResponse();
+    };
+
+    AtomicInteger filterOneCount = new AtomicInteger(0);
+    root = root.with(httpHandler -> req -> {
+      filterOneCount.incrementAndGet();
+      return httpHandler.execute(req);
+    });
+
+    AtomicInteger filterTwoCount = new AtomicInteger(0);
+    root = root.with(httpHandler -> req -> {
+      filterTwoCount.incrementAndGet();
+      return httpHandler.execute(req);
+    });
+
+    root.execute(new HttpRequest(GET, "/cheese"));
+
+    assertThat(rootCalls.get()).isEqualTo(1);
+    assertThat(filterOneCount.get()).isEqualTo(1);
+    assertThat(filterTwoCount.get()).isEqualTo(1);
   }
 }

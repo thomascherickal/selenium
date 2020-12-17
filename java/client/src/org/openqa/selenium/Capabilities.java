@@ -20,9 +20,10 @@ package org.openqa.selenium;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-
+import java.util.stream.Stream;
 
 /**
  * Describes a series of key/value pairs that encapsulate aspects of a browser.
@@ -33,29 +34,45 @@ public interface Capabilities {
     return String.valueOf(Optional.ofNullable(getCapability("browserName")).orElse(""));
   }
 
+  /**
+   * @deprecated  Use {@link #getPlatformName()}
+   */
+  @Deprecated
   default Platform getPlatform() {
-    Object rawPlatform = getCapability("platformName");
-
-    if (rawPlatform == null) {
-      rawPlatform = getCapability("platform");
-    }
-
-    if (rawPlatform == null) {
-      return null;
-    }
-
-    if (rawPlatform instanceof String) {
-      return Platform.fromString((String) rawPlatform);
-    } else if (rawPlatform instanceof Platform) {
-      return (Platform) rawPlatform;
-    }
-
-    throw new IllegalStateException("Platform was neither a string nor a Platform: " + rawPlatform);
+    return getPlatformName();
   }
 
+  default Platform getPlatformName() {
+    return Stream.of("platform", "platformName")
+      .map(this::getCapability)
+      .filter(Objects::nonNull)
+      .map(cap -> {
+        if (cap instanceof Platform) {
+          return (Platform) cap;
+        }
+
+        try {
+          return Platform.fromString((String.valueOf(cap)));
+        } catch (WebDriverException e) {
+          return null;
+        }
+      })
+      .filter(Objects::nonNull)
+      .findFirst()
+      .orElse(null);
+  }
+
+  /**
+   * @deprecated Use {@link #getBrowserVersion()}
+   */
+  @Deprecated
   default String getVersion() {
+    return getBrowserVersion();
+  }
+
+  default String getBrowserVersion() {
     return String.valueOf(Optional.ofNullable(getCapability("browserVersion")).orElse(
-        Optional.ofNullable(getCapability("version")).orElse("")));
+      Optional.ofNullable(getCapability("version")).orElse("")));
   }
 
   /**

@@ -23,6 +23,9 @@ module Selenium
   module WebDriver
     module EdgeChrome
       class Options < Selenium::WebDriver::Chrome::Options
+        KEY = 'ms:edgeOptions'
+        BROWSER = 'MicrosoftEdge'
+
         private
 
         def binary_path

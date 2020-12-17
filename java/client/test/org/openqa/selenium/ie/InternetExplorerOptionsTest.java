@@ -18,19 +18,23 @@
 package org.openqa.selenium.ie;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.MAP;
 import static org.openqa.selenium.ie.InternetExplorerDriver.INITIAL_BROWSER_URL;
 import static org.openqa.selenium.ie.InternetExplorerDriver.INTRODUCE_FLAKINESS_BY_IGNORING_SECURITY_DOMAINS;
 import static org.openqa.selenium.ie.InternetExplorerOptions.IE_OPTIONS;
 
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.ImmutableCapabilities;
 import org.openqa.selenium.Platform;
 import org.openqa.selenium.json.Json;
 import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.testing.UnitTests;
 
 import java.util.Map;
 
+@Category(UnitTests.class)
 public class InternetExplorerOptionsTest {
 
   @Test
@@ -51,9 +55,8 @@ public class InternetExplorerOptionsTest {
 
     assertThat(map).containsEntry(INITIAL_BROWSER_URL, expected);
     assertThat(map).containsKey("se:ieOptions");
-    assertThat(map.get("se:ieOptions")).isInstanceOf(Map.class);
-    Map<String, Object> ieOptions = (Map<String, Object>) map.get("se:ieOptions");
-    assertThat(ieOptions).containsEntry(INITIAL_BROWSER_URL, expected);
+    assertThat(map.get("se:ieOptions")).asInstanceOf(MAP)
+        .containsEntry(INITIAL_BROWSER_URL, expected);
   }
 
   @Test
@@ -76,9 +79,8 @@ public class InternetExplorerOptionsTest {
     InternetExplorerOptions options = new InternetExplorerOptions(caps);
 
     assertThat(options.is(INTRODUCE_FLAKINESS_BY_IGNORING_SECURITY_DOMAINS)).isTrue();
-
-    Map<String, Object> remoteOptions = (Map<String, Object>) options.getCapability("se:ieOptions");
-    assertThat(remoteOptions).containsEntry(INTRODUCE_FLAKINESS_BY_IGNORING_SECURITY_DOMAINS, true);
+    assertThat(options.getCapability("se:ieOptions")).asInstanceOf(MAP)
+        .containsEntry(INTRODUCE_FLAKINESS_BY_IGNORING_SECURITY_DOMAINS, true);
   }
 
   @Test

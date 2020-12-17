@@ -25,14 +25,16 @@ import org.openqa.selenium.grid.data.CreateSessionRequest;
 import org.openqa.selenium.grid.data.SessionClosedEvent;
 import org.openqa.selenium.grid.node.ActiveSession;
 import org.openqa.selenium.grid.node.SessionFactory;
+import org.openqa.selenium.internal.Require;
 import org.openqa.selenium.remote.SessionId;
 import org.openqa.selenium.remote.http.HttpHandler;
 import org.openqa.selenium.remote.http.HttpRequest;
 import org.openqa.selenium.remote.http.HttpResponse;
 
 import java.io.UncheckedIOException;
-import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.logging.Level;
@@ -43,24 +45,41 @@ public class SessionSlot implements
     Function<CreateSessionRequest, Optional<ActiveSession>>,
     Predicate<Capabilities>  {
 
-  public static final Logger LOG = Logger.getLogger(SessionSlot.class.getName());
+  private static final Logger LOG = Logger.getLogger(SessionSlot.class.getName());
   private final EventBus bus;
+  private final UUID id;
   private final Capabilities stereotype;
   private final SessionFactory factory;
+  private final AtomicBoolean reserved = new AtomicBoolean(false);
   private ActiveSession currentSession;
 
   public SessionSlot(EventBus bus, Capabilities stereotype, SessionFactory factory) {
-    this.bus = Objects.requireNonNull(bus);
-    this.stereotype = ImmutableCapabilities.copyOf(Objects.requireNonNull(stereotype));
-    this.factory = Objects.requireNonNull(factory);
+    this.bus = Require.nonNull("Event bus", bus);
+    this.id = UUID.randomUUID();
+    this.stereotype = ImmutableCapabilities.copyOf(Require.nonNull("Stereotype", stereotype));
+    this.factory = Require.nonNull("Session factory", factory);
+  }
+
+  public UUID getId() {
+    return id;
   }
 
   public Capabilities getStereotype() {
     return stereotype;
   }
 
+  public void reserve() {
+    if (reserved.getAndSet(true)) {
+      throw new IllegalStateException("Attempt to reserve a slot that is already reserved");
+    }
+  }
+
+  public void release() {
+    reserved.set(false);
+  }
+
   public boolean isAvailable() {
-    return currentSession == null;
+    return !reserved.get();
   }
 
   public ActiveSession getSession() {
@@ -77,8 +96,13 @@ public class SessionSlot implements
     }
 
     SessionId id = currentSession.getId();
-    currentSession.stop();
+    try {
+      currentSession.stop();
+    } catch (Exception e) {
+      LOG.log(Level.WARNING, "Unable to cleanly close session", e);
+    }
     currentSession = null;
+    release();
     bus.fire(new SessionClosedEvent(id));
   }
 
@@ -98,7 +122,11 @@ public class SessionSlot implements
 
   @Override
   public Optional<ActiveSession> apply(CreateSessionRequest sessionRequest) {
-    if (!isAvailable()) {
+    if (currentSession != null) {
+      return Optional.empty();
+    }
+
+    if (!test(sessionRequest.getCapabilities())) {
       return Optional.empty();
     }
 

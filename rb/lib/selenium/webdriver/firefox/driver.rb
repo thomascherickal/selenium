@@ -29,10 +29,13 @@ module Selenium
       class Driver < WebDriver::Driver
         include DriverExtensions::HasAddons
         include DriverExtensions::HasWebStorage
-        include DriverExtensions::TakesScreenshot
 
         def browser
           :firefox
+        end
+
+        def bridge_class
+          Bridge
         end
       end # Driver
     end # Firefox

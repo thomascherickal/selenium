@@ -30,10 +30,13 @@ module Selenium
         include DriverExtensions::HasDebugger
         include DriverExtensions::HasPermissions
         include DriverExtensions::HasWebStorage
-        include DriverExtensions::TakesScreenshot
 
         def browser
           :safari
+        end
+
+        def bridge_class
+          Bridge
         end
       end # Driver
     end # Safari

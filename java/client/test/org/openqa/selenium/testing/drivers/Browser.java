@@ -17,22 +17,42 @@
 
 package org.openqa.selenium.testing.drivers;
 
+import org.openqa.selenium.Capabilities;
+import org.openqa.selenium.ImmutableCapabilities;
+import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.edge.EdgeOptions;
+import org.openqa.selenium.edgehtml.EdgeHtmlOptions;
+import org.openqa.selenium.firefox.FirefoxOptions;
+import org.openqa.selenium.ie.InternetExplorerOptions;
+import org.openqa.selenium.opera.OperaOptions;
+import org.openqa.selenium.remote.BrowserType;
+import org.openqa.selenium.safari.SafariOptions;
+
 import java.util.logging.Logger;
 
+import static org.openqa.selenium.remote.CapabilityType.BROWSER_NAME;
+
 public enum Browser {
-  ALL,
-  CHROME,
-  EDGE,
-  CHROMIUMEDGE,
-  HTMLUNIT,
-  FIREFOX,
-  IE,
-  MARIONETTE,
-  OPERA,
-  OPERABLINK,
-  SAFARI;
+  ALL(new ImmutableCapabilities(), false),
+  CHROME(new ChromeOptions(), true),
+  EDGE_HTML(new EdgeHtmlOptions(), false),
+  EDGIUM(new EdgeOptions(), true),
+  HTMLUNIT(new ImmutableCapabilities(BROWSER_NAME, BrowserType.HTMLUNIT), false),
+  LEGACY_FIREFOX_XPI(new FirefoxOptions().setLegacy(true), false),
+  IE(new InternetExplorerOptions(), false),
+  FIREFOX(new FirefoxOptions(), false),
+  LEGACY_OPERA(new OperaOptions(), false),
+  OPERA(new OperaOptions(), false),
+  SAFARI(new SafariOptions(), false);
 
   private static final Logger log = Logger.getLogger(Browser.class.getName());
+  private final Capabilities canonicalCapabilities;
+  private final boolean supportsCdp;
+
+  Browser(Capabilities canonicalCapabilities, boolean supportsCdp) {
+    this.canonicalCapabilities = ImmutableCapabilities.copyOf(canonicalCapabilities);
+    this.supportsCdp = supportsCdp;
+  }
 
   public static Browser detect() {
     String browserName = System.getProperty("selenium.browser");
@@ -41,27 +61,48 @@ public enum Browser {
       return null;
     }
 
-    if ("ff".equals(browserName.toLowerCase()) || "firefox".equals(browserName.toLowerCase())) {
+    if ("ff".equalsIgnoreCase(browserName) || "firefox".equalsIgnoreCase(browserName)) {
       if (System.getProperty("webdriver.firefox.marionette") == null ||
           Boolean.getBoolean("webdriver.firefox.marionette")) {
-        return MARIONETTE;
-      } else {
         return FIREFOX;
+      } else {
+        return LEGACY_FIREFOX_XPI;
       }
     }
 
-    if ("edge".equals(browserName.toLowerCase())) {
-      if (System.getProperty("webdriver.edge.edgehtml") == null || Boolean.getBoolean("webdriver.edge.edgehtml"))
-        return EDGE;
+    if ("edge".equalsIgnoreCase(browserName)) {
+      return EDGIUM;
+    }
 
-      return CHROMIUMEDGE;
+    if ("edgehtml".equalsIgnoreCase(browserName)) {
+      return EDGE_HTML;
     }
 
     try {
       return Browser.valueOf(browserName.toUpperCase());
     } catch (IllegalArgumentException e) {
+      throw new RuntimeException(String.format("Cannot determine driver from name %s", browserName), e);
     }
+  }
 
-    throw new RuntimeException(String.format("Cannot determine driver from name %s", browserName));
+  public boolean supportsCdp() {
+    return supportsCdp;
+  }
+
+  public Capabilities getCapabilities() {
+    return canonicalCapabilities;
+  }
+
+  public boolean matches(Browser... others) {
+    for (Browser item : others) {
+      if (item == Browser.ALL) {
+        return true;
+      }
+
+      if (item == this) {
+        return true;
+      }
+    }
+    return false;
   }
 }

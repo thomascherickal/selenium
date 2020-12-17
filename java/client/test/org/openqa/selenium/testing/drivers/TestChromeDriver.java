@@ -20,6 +20,7 @@ package org.openqa.selenium.testing.drivers;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeDriverLogLevel;
 import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.DriverCommand;
@@ -48,10 +49,11 @@ public class TestChromeDriver extends ChromeDriver {
     try {
       Path logFile = Files.createTempFile("chromedriver", ".log");
       ChromeDriverService service = new ChromeDriverService.Builder()
-          .withVerbose(true)
-          .withLogFile(logFile.toFile())
-          .build();
+        .withLogLevel(ChromeDriverLogLevel.ALL)
+        .withLogFile(logFile.toFile())
+        .build();
       LOG.info("chromedriver will log to " + logFile);
+      LOG.info("chromedriver will use log level " + ChromeDriverLogLevel.ALL.toString().toUpperCase());
       service.start();
       // Fugly.
       Runtime.getRuntime().addShutdownHook(new Thread(service::stop));
@@ -63,7 +65,7 @@ public class TestChromeDriver extends ChromeDriver {
 
   private static ChromeOptions chromeWithCustomCapabilities(Capabilities originalCapabilities) {
     ChromeOptions options = new ChromeOptions();
-    options.addArguments("disable-extensions", "disable-infobars", "disable-breakpad");
+    options.addArguments("disable-extensions", "disable-infobars", "disable-breakpad", "disable-dev-shm-usage", "no-sandbox");
     Map<String, Object> prefs = new HashMap<>();
     prefs.put("exit_type", "None");
     prefs.put("exited_cleanly", true);

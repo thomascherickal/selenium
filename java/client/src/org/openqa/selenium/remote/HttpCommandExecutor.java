@@ -17,23 +17,17 @@
 
 package org.openqa.selenium.remote;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static org.openqa.selenium.remote.DriverCommand.GET_ALL_SESSIONS;
-import static org.openqa.selenium.remote.DriverCommand.NEW_SESSION;
-import static org.openqa.selenium.remote.DriverCommand.QUIT;
-import static org.openqa.selenium.remote.HttpSessionId.getSessionId;
-
-import com.google.common.collect.ImmutableMap;
-
 import org.openqa.selenium.NoSuchSessionException;
 import org.openqa.selenium.SessionNotCreatedException;
 import org.openqa.selenium.UnsupportedCommandException;
 import org.openqa.selenium.WebDriverException;
+import org.openqa.selenium.internal.Require;
 import org.openqa.selenium.logging.LocalLogs;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.NeedsLocalLogs;
 import org.openqa.selenium.logging.profiler.HttpProfilerLogEntry;
+import org.openqa.selenium.remote.http.ClientConfig;
 import org.openqa.selenium.remote.http.HttpClient;
 import org.openqa.selenium.remote.http.HttpRequest;
 import org.openqa.selenium.remote.http.HttpResponse;
@@ -43,9 +37,16 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
 
+import static java.util.Collections.emptyMap;
+import static org.openqa.selenium.json.Json.JSON_UTF_8;
+import static org.openqa.selenium.remote.DriverCommand.GET_ALL_SESSIONS;
+import static org.openqa.selenium.remote.DriverCommand.NEW_SESSION;
+import static org.openqa.selenium.remote.DriverCommand.QUIT;
+import static org.openqa.selenium.remote.HttpSessionId.getSessionId;
+
 public class HttpCommandExecutor implements CommandExecutor, NeedsLocalLogs {
 
-  private final static HttpClient.Factory defaultClientFactory = HttpClient.Factory.createDefault();
+  private static final HttpClient.Factory defaultClientFactory = HttpClient.Factory.createDefault();
 
   private final URL remoteServer;
   private final HttpClient client;
@@ -57,7 +58,11 @@ public class HttpCommandExecutor implements CommandExecutor, NeedsLocalLogs {
   private LocalLogs logs = LocalLogs.getNullLogger();
 
   public HttpCommandExecutor(URL addressOfRemoteServer) {
-    this(ImmutableMap.of(), addressOfRemoteServer);
+    this(emptyMap(), addressOfRemoteServer);
+  }
+
+  public HttpCommandExecutor(ClientConfig config) {
+    this(emptyMap(), config, defaultClientFactory);
   }
 
   /**
@@ -68,26 +73,42 @@ public class HttpCommandExecutor implements CommandExecutor, NeedsLocalLogs {
    * @param addressOfRemoteServer URL of remote end Selenium server
    */
   public HttpCommandExecutor(
-      Map<String, CommandInfo> additionalCommands,
-      URL addressOfRemoteServer) {
+    Map<String, CommandInfo> additionalCommands,
+    URL addressOfRemoteServer)
+  {
     this(additionalCommands, addressOfRemoteServer, defaultClientFactory);
   }
 
   public HttpCommandExecutor(
-      Map<String, CommandInfo> additionalCommands,
-      URL addressOfRemoteServer,
-      HttpClient.Factory httpClientFactory) {
+    Map<String, CommandInfo> additionalCommands,
+    URL addressOfRemoteServer,
+    HttpClient.Factory httpClientFactory)
+  {
+    this(additionalCommands,
+         ClientConfig.defaultConfig().baseUrl(addressOfRemoteServer),
+         httpClientFactory);
+  }
+
+  public HttpCommandExecutor(
+    Map<String, CommandInfo> additionalCommands,
+    ClientConfig config,
+    HttpClient.Factory httpClientFactory)
+  {
     try {
-      remoteServer = addressOfRemoteServer == null
-          ? new URL(System.getProperty("webdriver.remote.server", "http://localhost:4444/wd/hub"))
-          : addressOfRemoteServer;
+      if (config.baseUri() != null) {
+        remoteServer = config.baseUrl();
+      } else {
+        remoteServer = new URL(
+          System.getProperty("webdriver.remote.server", "http://localhost:4444/"));
+        config = config.baseUrl(remoteServer);
+      }
     } catch (MalformedURLException e) {
       throw new WebDriverException(e);
     }
 
     this.additionalCommands = additionalCommands;
     this.httpClientFactory = httpClientFactory;
-    this.client = httpClientFactory.createClient(remoteServer);
+    this.client = httpClientFactory.createClient(config);
   }
 
   /**
@@ -99,8 +120,8 @@ public class HttpCommandExecutor implements CommandExecutor, NeedsLocalLogs {
    * @param info CommandInfo for the command name provided
    */
   protected void defineCommand(String commandName, CommandInfo info) {
-    checkNotNull(commandName);
-    checkNotNull(info);
+    Require.nonNull("Command name", commandName);
+    Require.nonNull("Command info", info);
     commandCodec.defineCommand(commandName, info.getMethod(), info.getUrl());
   }
 
@@ -126,7 +147,7 @@ public class HttpCommandExecutor implements CommandExecutor, NeedsLocalLogs {
       if (!GET_ALL_SESSIONS.equals(command.getName())
           && !NEW_SESSION.equals(command.getName())) {
         throw new NoSuchSessionException(
-            "Session ID is null. Using WebDriver after calling quit()?");
+          "Session ID is null. Using WebDriver after calling quit()?");
       }
     }
 
@@ -149,10 +170,16 @@ public class HttpCommandExecutor implements CommandExecutor, NeedsLocalLogs {
 
     if (commandCodec == null || responseCodec == null) {
       throw new WebDriverException(
-          "No command or response codec has been defined. Unable to proceed");
+        "No command or response codec has been defined. Unable to proceed");
     }
 
     HttpRequest httpRequest = commandCodec.encode(command);
+
+    // Ensure that we set the required headers
+    if (httpRequest.getHeader("Content-Type") == null) {
+      httpRequest.addHeader("Content-Type", JSON_UTF_8);
+    }
+
     try {
       log(LogType.PROFILER, new HttpProfilerLogEntry(command.getName(), true));
       HttpResponse httpResponse = client.execute(httpRequest);
@@ -168,14 +195,15 @@ public class HttpCommandExecutor implements CommandExecutor, NeedsLocalLogs {
         }
       }
       if (QUIT.equals(command.getName())) {
+        client.close();
         httpClientFactory.cleanupIdleClients();
       }
       return response;
     } catch (UnsupportedCommandException e) {
       if (e.getMessage() == null || "".equals(e.getMessage())) {
         throw new UnsupportedOperationException(
-            "No information from server. Command name was: " + command.getName(),
-            e.getCause());
+          "No information from server. Command name was: " + command.getName(),
+          e.getCause());
       }
       throw e;
     }

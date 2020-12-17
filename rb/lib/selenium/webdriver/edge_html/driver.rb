@@ -28,10 +28,9 @@ module Selenium
 
       class Driver < WebDriver::Driver
         include DriverExtensions::HasWebStorage
-        include DriverExtensions::TakesScreenshot
 
         def browser
-          :edge
+          :edge_html
         end
       end # Driver
     end # EdgeHtml

@@ -39,18 +39,24 @@ import org.openqa.selenium.remote.RemoteWebDriver;
  * import org.junit.*;
  * import org.junit.runner.RunWith;
  * import org.junit.runners.JUnit4;
+ * import org.openqa.selenium.By;
+ * import org.openqa.selenium.WebDriver;
+ * import org.openqa.selenium.WebElement;
  * import org.openqa.selenium.chrome.ChromeDriverService;
- * import org.openqa.selenium.remote.DesiredCapabilities;
+ * import org.openqa.selenium.chrome.ChromeOptions;
  * import org.openqa.selenium.remote.RemoteWebDriver;
  *
+ * import java.io.File;
+ * import java.io.IOException;
+ *
  * {@literal @RunWith(JUnit4.class)}
- * public class ChromeTest extends TestCase {
+ * public class ChromeTest {
  *
  *   private static ChromeDriverService service;
  *   private WebDriver driver;
  *
  *   {@literal @BeforeClass}
- *   public static void createAndStartService() {
+ *   public static void createAndStartService() throws IOException {
  *     service = new ChromeDriverService.Builder()
  *         .usingDriverExecutable(new File("path/to/my/chromedriver.exe"))
  *         .usingAnyFreePort()
@@ -65,8 +71,7 @@ import org.openqa.selenium.remote.RemoteWebDriver;
  *
  *   {@literal @Before}
  *   public void createDriver() {
- *     driver = new RemoteWebDriver(service.getUrl(),
- *         DesiredCapabilities.chrome());
+ *     driver = new RemoteWebDriver(service.getUrl(), new ChromeOptions());
  *   }
  *
  *   {@literal @After}
@@ -79,7 +84,7 @@ import org.openqa.selenium.remote.RemoteWebDriver;
  *     driver.get("http://www.google.com");
  *     WebElement searchBox = driver.findElement(By.name("q"));
  *     searchBox.sendKeys("webdriver");
- *     searchBox.quit();
+ *     searchBox.sendKeys(Keys.ENTER);
  *     assertEquals("webdriver - Google Search", driver.getTitle());
  *   }
  * }
@@ -136,7 +141,7 @@ public class ChromeDriver extends ChromiumDriver {
    * @see #ChromeDriver(ChromeDriverService, ChromeOptions)
    */
   public ChromeDriver(ChromeOptions options) {
-    this(ChromeDriverService.createDefaultService(), options);
+    this(ChromeDriverService.createServiceWithConfig(options), options);
   }
 
   /**
@@ -160,7 +165,7 @@ public class ChromeDriver extends ChromiumDriver {
    */
   @Deprecated
   public ChromeDriver(ChromeDriverService service, Capabilities capabilities) {
-    super(new ChromiumDriverCommandExecutor(service), capabilities, ChromeOptions.CAPABILITY);
+    super(new ChromiumDriverCommandExecutor("goog", service), capabilities, ChromeOptions.CAPABILITY);
   }
 
 }

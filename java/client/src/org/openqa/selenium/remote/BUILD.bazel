@@ -1,6 +1,6 @@
 load("@rules_jvm_external//:defs.bzl", "artifact")
-load("//:copy_file.bzl", "copy_file")
-load("//java:defs.bzl", "java_dist_zip", "java_export")
+load("//common:defs.bzl", "copy_file")
+load("//java:defs.bzl", "java_dist_zip", "java_export", "java_library")
 load("//java:version.bzl", "SE_VERSION")
 
 java_library(
@@ -37,7 +37,6 @@ java_library(
     ],
     deps = [
         "//java/client/src/org/openqa/selenium:core",
-        artifact("com.google.guava:guava"),
     ],
 )
 
@@ -52,22 +51,24 @@ java_export(
         "AddRotatable.java",
         "Augmenter.java",
         "AugmenterProvider.java",
-        "BaseAugmenter.java",
-        "InterfaceImplementation.java",
-        "JdkAugmenter.java",
+        "RemoteRotatable.java",
+        "RemoteTags.java",
         "html5/AddApplicationCache.java",
         "html5/AddLocationContext.java",
         "html5/AddWebStorage.java",
         "mobile/AddNetworkConnection.java",
     ],
+    hides = [
+        "org.openqa.selenium.remote.internal",
+    ],
     maven_coordinates = "org.seleniumhq.selenium:selenium-remote-driver:%s" % SE_VERSION,
-    module_uses_services = [
-        "io.opentracing.Tracer",
+    pom_template = "//java/client/src/org/openqa/selenium:template-pom",
+    uses = [
+        "org.openqa.selenium.remote.AugmenterProvider",
         "org.openqa.selenium.remote.session.CapabilitiesFilter",
         "org.openqa.selenium.remote.session.CapabilityTransform",
         "org.openqa.selenium.remote.service.DriverService$Builder",
     ],
-    pom_template = "//java/client/src/org/openqa/selenium:template-pom",
     visibility = ["//visibility:public"],
     exports = [
         ":api",
@@ -78,7 +79,9 @@ java_export(
         "//java/client/src/org/openqa/selenium/io",
         "//java/client/src/org/openqa/selenium/os",
         "//java/client/src/org/openqa/selenium/remote/http",
+        "//java/client/src/org/openqa/selenium/remote/locators",
         "//java/client/src/org/openqa/selenium/remote/tracing",
+        "//java/client/src/org/openqa/selenium/remote/tracing/opentelemetry",
     ],
     deps = [
         ":api",
@@ -88,9 +91,10 @@ java_export(
         "//java/client/src/org/openqa/selenium/io",
         "//java/client/src/org/openqa/selenium/os",
         "//java/client/src/org/openqa/selenium/remote/http/netty",
-        "//java/client/src/org/openqa/selenium/remote/http/okhttp",
-        artifact("net.bytebuddy:byte-buddy"),
+        "//java/client/src/org/openqa/selenium/remote/http/reactor",
+        "//java/client/src/org/openqa/selenium/remote/tracing",
         artifact("com.google.guava:guava"),
+        artifact("net.bytebuddy:byte-buddy"),
     ],
 )
 

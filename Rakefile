@@ -56,11 +56,11 @@ def release_version
 end
 
 def google_storage_version
-  '4.0-alpha-4'
+  '4.0-beta-7'
 end
 
 def version
-  "#{release_version}.0-alpha-4"
+  "#{release_version}.0-beta-7"
 end
 
 # The build system used by webdriver is layered on top of rake, and we call it
@@ -100,27 +100,33 @@ task '//java/client/test/org/openqa/selenium/environment/webserver:webserver:ube
 ]
 
 # Java targets required for release. These should all be java_export targets.
-# Generated from: bazel query 'kind(.*_publish, set(//java/... //third_party/...))'
+# Generated from: bazel query 'kind(maven_artifacts, set(//java/... //third_party/...))'
 JAVA_RELEASE_TARGETS = %w[
-  //java/server/src/org/openqa/selenium/grid:grid-publish
-  //java/server/src/com/thoughtworks/selenium/webdriven:webdriven-publish
-  //java/client/src/org/openqa/selenium/support:support-publish
-  //java/client/src/org/openqa/selenium/safari:safari-publish
-  //java/client/src/org/openqa/selenium/remote/http:http-publish
-  //java/client/src/org/openqa/selenium/remote:remote-publish
-  //java/client/src/org/openqa/selenium/opera:opera-publish
-  //java/client/src/org/openqa/selenium/lift:lift-publish
-  //java/client/src/org/openqa/selenium/json:json-publish
-  //java/client/src/org/openqa/selenium/ie:ie-publish
-  //java/client/src/org/openqa/selenium/firefox/xpi:xpi-publish
-  //java/client/src/org/openqa/selenium/firefox:firefox-publish
-  //java/client/src/org/openqa/selenium/edge/edgehtml:edgehtml-publish
-  //java/client/src/org/openqa/selenium/edge:edgeium-publish
-  //java/client/src/org/openqa/selenium/devtools:devtools-publish
-  //java/client/src/org/openqa/selenium/chromium:chromium-publish
-  //java/client/src/org/openqa/selenium/chrome:chrome-publish
-  //java/client/src/org/openqa/selenium:core-publish
-  //java/client/src/org/openqa/selenium:client-combined-publish
+  //java/client/src/org/openqa/selenium/chrome:chrome-maven-artifacts
+  //java/client/src/org/openqa/selenium/chromium:chromium-maven-artifacts
+  //java/client/src/org/openqa/selenium/devtools/v84:v84-maven-artifacts
+  //java/client/src/org/openqa/selenium/devtools/v85:v85-maven-artifacts
+  //java/client/src/org/openqa/selenium/devtools/v86:v86-maven-artifacts
+  //java/client/src/org/openqa/selenium/devtools/v87:v87-maven-artifacts
+  //java/client/src/org/openqa/selenium/devtools:devtools-maven-artifacts
+  //java/client/src/org/openqa/selenium/edge:edge-maven-artifacts
+  //java/client/src/org/openqa/selenium/edgehtml:edgehtml-maven-artifacts
+  //java/client/src/org/openqa/selenium/firefox/xpi:xpi-maven-artifacts
+  //java/client/src/org/openqa/selenium/firefox:firefox-maven-artifacts
+  //java/client/src/org/openqa/selenium/ie:ie-maven-artifacts
+  //java/client/src/org/openqa/selenium/json:json-maven-artifacts
+  //java/client/src/org/openqa/selenium/lift:lift-maven-artifacts
+  //java/client/src/org/openqa/selenium/opera:opera-maven-artifacts
+  //java/client/src/org/openqa/selenium/remote/http:http-maven-artifacts
+  //java/client/src/org/openqa/selenium/remote:remote-maven-artifacts
+  //java/client/src/org/openqa/selenium/safari:safari-maven-artifacts
+  //java/client/src/org/openqa/selenium/support:support-maven-artifacts
+  //java/client/src/org/openqa/selenium:client-combined-maven-artifacts
+  //java/client/src/org/openqa/selenium:core-maven-artifacts
+  //java/server/src/com/thoughtworks/selenium/webdriven:webdriven-maven-artifacts
+  //java/server/src/org/openqa/selenium/grid/sessionmap/jdbc:jdbc-maven-artifacts
+  //java/server/src/org/openqa/selenium/grid/sessionmap/redis:redis-maven-artifacts
+  //java/server/src/org/openqa/selenium/grid:grid-maven-artifacts
 ]
 
 # Notice that because we're using rake, anything you can do in a normal rake
@@ -149,7 +155,6 @@ task chrome: ['//java/client/src/org/openqa/selenium/chrome']
 task grid: [:'selenium-server-standalone']
 task ie: ['//java/client/src/org/openqa/selenium/ie']
 task firefox: ['//java/client/src/org/openqa/selenium/firefox']
-task 'debug-server': '//java/client/test/org/openqa/selenium/environment:appserver:run'
 task remote: %i[remote_server remote_client]
 task remote_client: ['//java/client/src/org/openqa/selenium/remote']
 task remote_server: ['//java/server/src/org/openqa/selenium/remote/server']
@@ -256,15 +261,17 @@ task test_rb_local: [
   ('//rb:safari-preview-test' if SeleniumRake::Checks.mac?),
   ('//rb:safari-test' if SeleniumRake::Checks.mac?),
   ('//rb:ie-test' if SeleniumRake::Checks.windows?),
-  ('//rb:edge-test' if SeleniumRake::Checks.windows?)
+  ('//rb:edge-test' unless SeleniumRake::Checks.linux?)
 ].compact
 
 task test_rb_remote: [
   '//rb:remote-chrome-test',
   '//rb:remote-firefox-test',
   ('//rb:remote-safari-test' if SeleniumRake::Checks.mac?),
+  # BUG - https://github.com/SeleniumHQ/selenium/issues/6791
+  # ('//rb:remote-safari-preview-test' if SeleniumRake::Checks.mac?),
   ('//rb:remote-ie-test' if SeleniumRake::Checks.windows?),
-  ('//rb:remote-edge-test' if SeleniumRake::Checks.windows?)
+  ('//rb:remote-edge-test' unless SeleniumRake::Checks.linux?)
 ].compact
 
 task test_py: [:py_prep_for_install_release, 'py:marionette_test']
@@ -291,29 +298,20 @@ ie_generator.generate_type_mapping(
   out: 'cpp/iedriver/IEReturnTypes.h'
 )
 
-task javadocs: %i[common firefox ie remote support chrome selenium] do
+task javadocs: %i[//java/server/src/org/openqa/selenium/grid:all-javadocs] do
   rm_rf 'build/javadoc'
   mkdir_p 'build/javadoc'
-  sourcepath = ''
-  classpath = '.'
-  Dir['third_party/java/*/*.jar'].each do |jar|
-    classpath << ':' + jar unless jar.to_s =~ /.*-src.*\.jar/
-  end
-  [File.join(%w[java client src])].each do |m|
-    sourcepath += File::PATH_SEPARATOR + m
-  end
-  [File.join(%w[java server src])].each do |m|
-    sourcepath += File::PATH_SEPARATOR + m
-  end
 
-  p sourcepath
-  cmd = "javadoc -notimestamp -d build/javadoc -sourcepath #{sourcepath} -classpath #{classpath} -subpackages org.openqa.selenium -subpackages com.thoughtworks "
-  cmd << ' -exclude org.openqa.selenium.internal.selenesedriver:org.openqa.selenium.internal.seleniumemulation:org.openqa.selenium.remote.internal'
+  out = Rake::Task['//java/server/src/org/openqa/selenium/grid:all-javadocs'].out
 
+  cmd = %{cd build/javadoc && jar xf "../../#{out}" 2>&1}
   if SeleniumRake::Checks.windows?
     cmd = cmd.gsub(/\//, '\\').gsub(/:/, ';')
   end
-  sh cmd
+
+
+  ok = system(cmd)
+  ok or raise "could not unpack javadocs"
 
   File.open('build/javadoc/stylesheet.css', 'a') { |file|
     file.write(<<~EOF
@@ -329,20 +327,8 @@ task javadocs: %i[common firefox ie remote support chrome selenium] do
       }
 
     EOF
-              )
+    )
   }
-end
-
-task py_prep_for_install_release: [
-  :chrome,
-  'py:prep'
-]
-
-task py_docs: 'py:docs'
-task py_install: 'py:install'
-
-task py_release: :py_prep_for_install_release do
-  sh 'python setup.py sdist bdist_wheel upload'
 end
 
 file 'cpp/iedriver/sizzle.h' => ['//third_party/js/sizzle:sizzle:header'] do
@@ -538,6 +524,7 @@ end
 
 namespace :node do
   atom_list = %w[
+    //javascript/atoms/fragments:find-elements
     //javascript/atoms/fragments:is-displayed
     //javascript/webdriver/atoms:get-attribute
   ]
@@ -549,7 +536,8 @@ namespace :node do
     puts 'rake outs are below'
     p rake_outs = [
       Rake::Task['//javascript/atoms/fragments:is-displayed'].out,
-      Rake::Task['//javascript/webdriver/atoms:get-attribute'].out
+      Rake::Task['//javascript/webdriver/atoms:get-attribute'].out,
+      Rake::Task['//javascript/atoms/fragments:find-elements'].out
     ]
 
     rake_outs.each do |atom|
@@ -624,7 +612,7 @@ namespace :py do
     end
   end
 
-  %w[chrome ff marionette ie edge blackberry remote_firefox safari].each do |browser|
+  %w[chrome ff marionette ie edge remote_firefox safari].each do |browser|
     browser_data = SeleniumRake::Browsers::BROWSERS[browser]
     deps = browser_data[:deps] || []
     deps += [:prep]

@@ -1,3 +1,157 @@
+v4.0.0a7
+========
+ * 4.0.0a6 was skipped for the .NET bindings and not released publicly.
+ * Enabled the ability to push shipping releases to the NuGet repository
+   from the Bazel command line.
+ * Introduced a version-independent implementation of CDP for .NET. This 
+   version introduces a facade around Chromium's Developer Tools Protocol,
+   which will present developers with a stable, version-independent API for
+   the use cases most relevant to Selenium. It is still possible for users
+   to have access to the version-specific API by calling the
+   `GetVersionSpecificDomains<T>` method on the DevTools session object
+   created when the user calls `IDevTools::CreateDevToolsSession`. Note
+   that using this method will tie any consuming code to one and only one
+   version of a Chromium-based browser, and the consuming code may need
+   source-code changes and recompilation when new versions of the browser
+   are released. Note that at this time, only local execution of CDP code
+   is supported. Remote proxying of CDP calls through the Selenium Grid
+   is planned, but not yet implemented. Also, certain helper methods to
+   enable common desired scenarios for Selenium users that may be present
+   in other language bindings still need to be created for .NET.
+ * Enabled dynamic generation of the .NET API for the DevTools Protocol
+   during the Bazel build process.
+ * (on behalf of J.D. Purcell) Fixed SendKeys regressions related to multiple
+   file uploading. Fixes issue #8635.
+ * (on behalf of GFHuang) Make FluentWait.Until method cancellable, adding a
+   CancellationToken argument to allow the user to cancel the wait.
+ * (on behalf of Ivan Krutov) Modified to correctly close zip archive in file
+   uploads for .NET.
+ * (on behalf of Dvoryadkin Pavel) Modified to detect all files when uploading
+   multiple files via RemoteWebDriver. Fixes issue #8540.
+ * (on behalf of haqer1) Fixed typo in tests for visibility.
+ * (on behalf of Brandon Walderman) Fixed browserName typo for Edge WebView2.
+   Fixes issue #8455.
+ * Updated custom Firefox profile generation, as the default WebDriver
+   preferences JSON file for creating a custom Firefox profile was being
+   referred to by the wrong resource identifier.
+ * Updated .NET Bazel build process. This version makes changes to the
+   .csproj files in the project to shell out to other Bazel targets for
+   building non-.NET dependencies in the project. It also updates those build
+   steps to be more friendly to non-Windows operating systems. These changes
+   should also allow the .NET bindings to go from a clean directory in a new
+   clone to a fully built and configured .NET bindings with properly embedded
+   resources, providing that the machine is correctly configured to build the
+   project from the command line with Bazel. This eliminates a barrier to
+   entry with respect to using a .NET IDE (Visual Studio and Visual Studio
+   for Mac) to build the bindings without taking some manual steps first
+   (like building the JavaScript automation atoms and the web server for
+   running tests against).
+ * The .NET tests now support being run under both the .NET Framework
+   and .NET Core. This also now allows the user to run the tests using
+   Bazel, and can run against any of the supported browsers. By default,
+   the tests run using .NET Core. On non-Windows OSes, this will use .NET
+   Core by default, but if one explicitly wants to use the .NET Framework,
+   it will use Mono to execute the tests (Mono must be installed for this
+   to work). To run the tests at the command line, use the following command:
+
+       bazel test //dotnet/test/common:<browser> --enable_runfiles
+
+   where <browser> is one of the following values:
+
+    * chrome
+    * chromedev
+    * firefox
+    * firefoxnightly
+    * ie
+    * edge
+    * edgelegacy
+    * safari
+    * safaritechpreview
+
+   To specify to run the driver using the .NET Framework, append:
+
+       --define framework=netfx
+
+   to the command line.
+
+   To specify where the browser driver (chromedriver, geckodriver,
+   IEDriverServer, etc.) can be found, append the following to the
+   command line:
+
+       --test_arg=--params=DriverServiceLocation=<path>
+
+   where <path> is the path to the executable.
+
+v4.0.0a5
+========
+ * Fixed Bazel build process to create correct assemblies.
+ * (on behalf of Maciej Pakulski) Updated MakeHttpRequest to use TaskFactory
+   for async tasks. MakeHttpRequest is an async method which is called in
+   synchronous way. In order to avoid a deadlock (for example, when run
+   using XUnit), we create a new task to run the async method. Fixes issue
+   #7916.
+ * Removed is operator in preference to as operator.
+ * (on behalf of Jordan Mace) Added equals override to EventFiringWebElement.
+ * (on behalf of Jordan Mace) Fixed binding spec compliance for ErrorResponse.
+ * Added SameSite cookie information to .NET cookie handling.
+ * (on behalf of Brandon Walderman) Updated to use a capability to switch
+   engines for EdgeOptions and EdgeDriverService
+ * Re-added Firefox preferences json file for legacy anonymous profile
+   creation.
+ * (on behalf of Rami) Fixed typos in documentation strings and error
+   message text for EdgeDriverService. Fixes issue #8098.
+ * (on behalf of Jordan Mace) Updated to perform null check when calling
+   Start on DriverService. Fixes issue #8074.
+ * (on behalf of Mandar J Kulkarni) Fixed method documentation for
+   RemoteWindow.Maximize.
+ * (on behalf of "trademark18") Fixed comments for Safari referencing.
+   Chrome.
+ * (on behalf of Brandon Walderman) Removed vendor-specific names from
+   ChromiumOptions base class. This makes the base ChromiumOptions class
+   vendor-neutral, and also allows a custom browser name when using the
+   EdgeOptions class.
+ * (on behalf of Scott Sauber) Fix typo in summary documentation comment
+   of down keys
+
+v4.0.0a4
+========
+ * (on behalf of Jan Trejbal) Fixed WebSocket message handler. This
+   change fixes how responses are mapped to the request and propagated
+   back to the caller, as well as correcting the use of Try* methods to
+   check for return values.
+ * (on behalf of Jan Trejbal) Fixed incorrectly used named parameters
+   in string formatting. .NET Core does not support named parameters in
+   string.Format(...), so this commit fixes that. Additionally, this
+   fixes a logic error in DriverOptions.
+ * Added support for relative locators. To use relative locators in
+   .NET, take advantage of the new RelativeBy class to use with
+   FindElement and FindElements. This change also marks the IFindsBy*
+   interfaces (IFindsById, IFindsByName, etc.) as deprecated. The
+   presence of individual methods for finding elements by each mechanism
+   is an artifact of an older architecture, and with the standardization
+   of the locator methods in the W3C WebDriver Specification, they are
+   now just excess code, and will be deleted.
+ * (on behalf of Stanley Hon) Updated EdgeOptions constructor to use new
+   ms:edgeOptions capability name instead of goog:chromeOptions.
+ * (on behalf of Stanley Hon) Updated EdgeOptions to allow specifying
+   BrowserName.
+ * Changed internal name of embedded resources in .NET assemblies.
+
+v4.0.0a3
+========
+ * Fixed retrieval of "Logs". Fixes issue #7390.
+ * Added Reset method to Actions class.
+ * Added ToString override to .NET PauseInteraction.
+ * (on behalf of Nikolay Borisenko) Fixed to Handle TaskCanceled exception
+   and re-throw it with timeout exception.
+ * Added ability to install/uninstall Firefox add-ons.
+ * Modified to throw more informative exception on invalid new session
+   response.
+ * (on behalf of jonasz.karfiol@gmail.com) Summary for Minimize method
+   corrected.
+ * (on behalf of YevgeniyShunevych) Optimized Actions.MoveToElement
+   method by removing needless operations.
+
 v4.0.0a2
 ========
  * Added Chrome DevTools Protocol (CDP) support to .NET bindings. By

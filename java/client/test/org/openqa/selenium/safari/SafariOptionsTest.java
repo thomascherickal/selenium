@@ -17,17 +17,20 @@
 
 package org.openqa.selenium.safari;
 
+import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
-
-import com.google.common.collect.ImmutableMap;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.openqa.selenium.ImmutableCapabilities;
 import org.openqa.selenium.remote.CapabilityType;
+import org.openqa.selenium.testing.UnitTests;
 
 import java.util.HashMap;
 import java.util.Map;
 
+@Category(UnitTests.class)
 public class SafariOptionsTest {
 
   @Test
@@ -49,13 +52,6 @@ public class SafariOptionsTest {
     SafariOptions options = new SafariOptions();
     assertThat(options.getUseTechnologyPreview()).isFalse();
 
-    options = new SafariOptions(new ImmutableCapabilities(SafariOptions.CAPABILITY, embeddedOptions));
-    assertThat(options.getUseTechnologyPreview()).isTrue();
-
-    embeddedOptions.put("technologyPreview", false);
-    options = new SafariOptions(new ImmutableCapabilities(SafariOptions.CAPABILITY, embeddedOptions));
-    assertThat(options.getUseTechnologyPreview()).isFalse();
-
     options = new SafariOptions(new ImmutableCapabilities(CapabilityType.BROWSER_NAME, "Safari Technology Preview"));
     assertThat(options.getUseTechnologyPreview()).isTrue();
 
@@ -67,7 +63,7 @@ public class SafariOptionsTest {
   public void newerStyleCapabilityWinsOverOlderStyle() {
     SafariOptions options = new SafariOptions(new ImmutableCapabilities(
         CapabilityType.BROWSER_NAME, "Safari Technology Preview",
-        SafariOptions.CAPABILITY, ImmutableMap.of("technologyPreview", false)));
+        SafariOptions.CAPABILITY, singletonMap("technologyPreview", false)));
 
     assertThat(options.getUseTechnologyPreview()).isTrue();
   }
@@ -95,4 +91,17 @@ public class SafariOptionsTest {
     options.setUseTechnologyPreview(false);
     assertThat(options.getBrowserName()).isEqualTo("safari");
   }
+
+  @Test
+  public void optionsAsMapShouldBeImmutable() {
+    Map<String, Object> options = new SafariOptions().asMap();
+    assertThatExceptionOfType(UnsupportedOperationException.class)
+        .isThrownBy(() -> options.put("browserType", "chrome"));
+
+    Map<String, Object> safariOptions = (Map<String, Object>) options.get(SafariOptions.CAPABILITY);
+    assertThatExceptionOfType(UnsupportedOperationException.class)
+        .isThrownBy(() -> safariOptions.put("x", true));
+  }
+
+
 }

@@ -17,8 +17,6 @@
 
 package org.openqa.selenium.grid.sessionmap;
 
-import io.opentracing.Tracer;
-import io.opentracing.noop.NoopTracerFactory;
 import org.junit.Before;
 import org.junit.Test;
 import org.openqa.selenium.ImmutableCapabilities;
@@ -32,11 +30,14 @@ import org.openqa.selenium.grid.sessionmap.remote.RemoteSessionMap;
 import org.openqa.selenium.grid.testing.PassthroughHttpClient;
 import org.openqa.selenium.remote.SessionId;
 import org.openqa.selenium.remote.http.HttpClient;
+import org.openqa.selenium.remote.tracing.DefaultTestTracer;
+import org.openqa.selenium.remote.tracing.Tracer;
 import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.Wait;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Instant;
 import java.util.UUID;
 
 import static java.time.Duration.ofSeconds;
@@ -61,11 +62,13 @@ public class SessionMapTest {
   public void setUp() throws URISyntaxException {
     id = new SessionId(UUID.randomUUID());
     expected = new Session(
-        id,
-        new URI("http://localhost:1234"),
-        new ImmutableCapabilities());
+      id,
+      new URI("http://localhost:1234"),
+      new ImmutableCapabilities(),
+      new ImmutableCapabilities(),
+      Instant.now());
 
-    Tracer tracer = NoopTracerFactory.create();
+    Tracer tracer = DefaultTestTracer.createTracer();
     bus = new GuavaEventBus();
 
     local = new LocalSessionMap(tracer, bus);

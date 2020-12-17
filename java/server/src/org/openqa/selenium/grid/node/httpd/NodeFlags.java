@@ -18,14 +18,61 @@
 package org.openqa.selenium.grid.node.httpd;
 
 import com.beust.jcommander.Parameter;
-
+import com.google.auto.service.AutoService;
 import org.openqa.selenium.grid.config.ConfigValue;
+import org.openqa.selenium.grid.config.HasRoles;
+import org.openqa.selenium.grid.config.Role;
 
-class NodeFlags {
+import java.net.URL;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static org.openqa.selenium.grid.config.StandardGridRoles.NODE_ROLE;
+
+@AutoService(HasRoles.class)
+public class NodeFlags implements HasRoles {
 
   @Parameter(
-      names = {"--detect-drivers"},
-      description = "Autodetect which drivers are available on the current system, and add them to the node.")
-  @ConfigValue(section = "node", name = "detect-drivers")
-  public boolean autoconfigure;
+    names = "--max-sessions",
+    description = "Maximum number of concurrent sessions.")
+  @ConfigValue(section = "node", name = "max-concurrent-sessions", example = "8")
+  public int maxSessions;
+
+  @Parameter(
+      names = {"--detect-drivers"}, arity = 1,
+      description = "Autodetect which drivers are available on the current system, " +
+                    "and add them to the node. Defaults to true.")
+  @ConfigValue(section = "node", name = "detect-drivers", example = "true")
+  public Boolean autoconfigure;
+
+  @Parameter(
+    names = {"-I", "--driver-implementation"},
+    description = "Drivers that should be checked. If specified, will skip autoconfiguration. Example: -I \"firefox\" -I \"chrome\"")
+  @ConfigValue(section = "node", name = "drivers", example = "[\"firefox\", \"chrome\"]")
+  public Set<String> driverNames = new HashSet<>();
+
+  @Parameter(
+    names = {"--driver-factory"},
+    description = "Mapping of fully qualified class name to a browser configuration that this matches against. " +
+      "`--driver-factory org.openqa.selenium.example.LynxDriverFactory '{\"browserName\": \"lynx\"}')",
+    arity = 2,
+    variableArity = true)
+  @ConfigValue(
+    section = "node",
+    name = "driver-factories",
+    example = "[\"org.openqa.selenium.example.LynxDriverFactory '{\"browserName\": \"lynx\"}']")
+  public List<String> driverFactory2Config;
+
+  @Parameter(
+    names = {"--public-url"},
+    description = "Public URL of the Grid as a whole (typically the address of the hub or the router)")
+  @ConfigValue(section = "node", name = "grid-url", example = "\"https://grid.example.com\"")
+  public URL gridUri;
+
+  @Override
+  public Set<Role> getRoles() {
+    return Collections.singleton(NODE_ROLE);
+  }
 }

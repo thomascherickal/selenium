@@ -17,15 +17,16 @@
 
 package org.openqa.selenium.firefox;
 
-import static java.util.Objects.requireNonNull;
-import static org.openqa.selenium.firefox.FirefoxDriver.BINARY;
-import static org.openqa.selenium.firefox.FirefoxDriver.MARIONETTE;
-import static org.openqa.selenium.firefox.FirefoxDriver.PROFILE;
+import static java.util.Collections.singletonMap;
+import static java.util.Collections.unmodifiableList;
+import static java.util.Collections.unmodifiableMap;
+import static org.openqa.selenium.firefox.FirefoxDriver.Capability.BINARY;
+import static org.openqa.selenium.firefox.FirefoxDriver.Capability.MARIONETTE;
+import static org.openqa.selenium.firefox.FirefoxDriver.Capability.PROFILE;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedMap;
 
+import org.openqa.selenium.internal.Require;
 import org.openqa.selenium.remote.AbstractDriverOptions;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.WebDriverException;
@@ -36,12 +37,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.TreeMap;
 
 /**
  * Manage firefox specific settings in a way that geckodriver can understand.
@@ -56,7 +57,7 @@ import java.util.TreeMap;
  */
 public class FirefoxOptions extends AbstractDriverOptions<FirefoxOptions> {
 
-  public final static String FIREFOX_OPTIONS = "moz:firefoxOptions";
+  public static final String FIREFOX_OPTIONS = "moz:firefoxOptions";
 
   private List<String> args = new ArrayList<>();
   private Map<String, Object> preferences = new HashMap<>();
@@ -96,12 +97,18 @@ public class FirefoxOptions extends AbstractDriverOptions<FirefoxOptions> {
 
   public FirefoxOptions(Capabilities source) {
     // We need to initialize all our own fields before calling.
-    super();
+    this();
     source.asMap().forEach((key, value)-> {
       if (value != null) {
         setCapability(key, value);
       }
     });
+
+    // If `source` is an instance of FirefoxOptions, we need to mirror those into this instance.
+    if (source instanceof FirefoxOptions) {
+      mirror((FirefoxOptions) source);
+      return;
+    }
 
     // If `source` has options, we need to mirror those into this instance. This may be either a
     // Map (if we're constructing from a serialized instance) or another FirefoxOptions. *sigh*
@@ -166,6 +173,17 @@ public class FirefoxOptions extends AbstractDriverOptions<FirefoxOptions> {
     }
   }
 
+  private void mirror(FirefoxOptions that) {
+    addArguments(that.args);
+    that.preferences.forEach(this::addPreference);
+    setLegacy(that.legacy);
+
+    if (that.logLevel != null) { setLogLevel(that.logLevel); }
+    if (that.binary != null) { setCapability(BINARY, that.binary.asCapability()); }
+
+    if (that.profile != null) { setProfile(that.profile); }
+  }
+
   public FirefoxOptions setLegacy(boolean legacy) {
     setCapability(MARIONETTE, !legacy);
     return this;
@@ -203,7 +221,7 @@ public class FirefoxOptions extends AbstractDriverOptions<FirefoxOptions> {
   }
 
   public FirefoxOptions setProfile(FirefoxProfile profile) {
-    setCapability(FirefoxDriver.PROFILE, profile);
+    setCapability(FirefoxDriver.Capability.PROFILE, profile);
     return this;
   }
 
@@ -212,7 +230,7 @@ public class FirefoxOptions extends AbstractDriverOptions<FirefoxOptions> {
   }
 
   public FirefoxOptions addArguments(String... arguments) {
-    addArguments(ImmutableList.copyOf(arguments));
+    addArguments(Arrays.asList(arguments));
     return this;
   }
 
@@ -222,12 +240,12 @@ public class FirefoxOptions extends AbstractDriverOptions<FirefoxOptions> {
   }
 
   public FirefoxOptions addPreference(String key, Object value) {
-    preferences.put(requireNonNull(key), value);
+    preferences.put(Require.nonNull("Key", key), value);
     return this;
   }
 
   public FirefoxOptions setLogLevel(FirefoxDriverLogLevel logLevel) {
-    this.logLevel = Objects.requireNonNull(logLevel, "Log level must be set");
+    this.logLevel = Require.nonNull("Log level", logLevel);
     return this;
   }
 
@@ -243,7 +261,7 @@ public class FirefoxOptions extends AbstractDriverOptions<FirefoxOptions> {
   public void setCapability(String key, Object value) {
     switch (key) {
       case BINARY:
-        binary = new Binary(requireNonNull(value, "Binary value cannot be null"));
+        binary = new Binary(Require.nonNull("Binary value", value));
         value = binary.asCapability();
         break;
 
@@ -276,17 +294,17 @@ public class FirefoxOptions extends AbstractDriverOptions<FirefoxOptions> {
 
   @Override
   public Map<String, Object> asMap() {
-    TreeMap<String, Object> toReturn = new TreeMap<>(super.asMap());
+    Map<String, Object> toReturn = new HashMap<>(super.asMap());
 
     ImmutableSortedMap.Builder<String, Object> w3cOptions = ImmutableSortedMap.naturalOrder();
-    w3cOptions.put("args", args);
+    w3cOptions.put("args", unmodifiableList(new ArrayList<>(args)));
 
     if (binary != null) {
       w3cOptions.put("binary", binary.asPath());
     }
 
     if (logLevel != null) {
-      w3cOptions.put("log", ImmutableMap.of("level", logLevel));
+      w3cOptions.put("log", singletonMap("level", logLevel));
     }
 
     if (profile != null) {
@@ -297,17 +315,20 @@ public class FirefoxOptions extends AbstractDriverOptions<FirefoxOptions> {
         throw new WebDriverException(e);
       }
     } else {
-      w3cOptions.put("prefs", new HashMap<>(preferences));
+      w3cOptions.put("prefs", unmodifiableMap(new HashMap<>(preferences)));
     }
 
     toReturn.put(FIREFOX_OPTIONS, w3cOptions.build());
 
-    return toReturn;
+    return unmodifiableMap(toReturn);
   }
 
   @Override
   public FirefoxOptions merge(Capabilities capabilities) {
     super.merge(capabilities);
+    if (capabilities instanceof FirefoxOptions) {
+      mirror((FirefoxOptions) capabilities);
+    }
     return this;
   }
 

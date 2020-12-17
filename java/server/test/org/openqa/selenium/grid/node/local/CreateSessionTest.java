@@ -19,7 +19,6 @@ package org.openqa.selenium.grid.node.local;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import io.opentracing.noop.NoopTracerFactory;
 import org.junit.Test;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.ImmutableCapabilities;
@@ -28,14 +27,16 @@ import org.openqa.selenium.grid.data.CreateSessionRequest;
 import org.openqa.selenium.grid.data.CreateSessionResponse;
 import org.openqa.selenium.grid.data.Session;
 import org.openqa.selenium.grid.node.Node;
+import org.openqa.selenium.grid.security.Secret;
 import org.openqa.selenium.grid.testing.TestSessionFactory;
 import org.openqa.selenium.json.Json;
 import org.openqa.selenium.remote.ErrorCodes;
-import org.openqa.selenium.remote.http.HttpClient;
 import org.openqa.selenium.remote.http.HttpRequest;
+import org.openqa.selenium.remote.tracing.DefaultTestTracer;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Instant;
 import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -50,6 +51,7 @@ public class CreateSessionTest {
 
   private final Json json = new Json();
   private final Capabilities stereotype = new ImmutableCapabilities("cheese", "brie");
+  private final Secret registrationSecret = new Secret("tunworth");
 
   @Test
   public void shouldAcceptAW3CPayload() throws URISyntaxException {
@@ -63,11 +65,12 @@ public class CreateSessionTest {
     URI uri = new URI("http://example.com");
 
     Node node = LocalNode.builder(
-        NoopTracerFactory.create(),
+      DefaultTestTracer.createTracer(),
         new GuavaEventBus(),
-        HttpClient.Factory.createDefault(),
-        uri)
-        .add(stereotype, new TestSessionFactory((id, caps) -> new Session(id, uri, caps)))
+        uri,
+        uri,
+        registrationSecret)
+        .add(stereotype, new TestSessionFactory((id, caps) -> new Session(id, uri, new ImmutableCapabilities(), caps, Instant.now())))
         .build();
 
     CreateSessionResponse sessionResponse = node.newSession(
@@ -93,12 +96,12 @@ public class CreateSessionTest {
 
   @Test
   public void shouldOnlyAcceptAJWPPayloadIfConfiguredTo() {
-
+    // TODO: implement shouldOnlyAcceptAJWPPayloadIfConfiguredTo test
   }
 
   @Test
   public void ifOnlyW3CPayloadSentAndRemoteEndIsJWPOnlyFailSessionCreationIfJWPNotConfigured() {
-
+    // TODO: implement ifOnlyW3CPayloadSentAndRemoteEndIsJWPOnlyFailSessionCreationIfJWPNotConfigured test
   }
 
   @Test
@@ -113,11 +116,12 @@ public class CreateSessionTest {
     URI uri = new URI("http://example.com");
 
     Node node = LocalNode.builder(
-        NoopTracerFactory.create(),
+      DefaultTestTracer.createTracer(),
         new GuavaEventBus(),
-        HttpClient.Factory.createDefault(),
-        uri)
-        .add(stereotype, new TestSessionFactory((id, caps) -> new Session(id, uri, caps)))
+        uri,
+        uri,
+        registrationSecret)
+        .add(stereotype, new TestSessionFactory((id, caps) -> new Session(id, uri, new ImmutableCapabilities(), caps, Instant.now())))
         .build();
 
     CreateSessionResponse sessionResponse = node.newSession(
@@ -155,11 +159,12 @@ public class CreateSessionTest {
     URI uri = new URI("http://example.com");
 
     Node node = LocalNode.builder(
-        NoopTracerFactory.create(),
+      DefaultTestTracer.createTracer(),
         new GuavaEventBus(),
-        HttpClient.Factory.createDefault(),
-        uri)
-        .add(stereotype, new TestSessionFactory((id, caps) -> new Session(id, uri, caps)))
+        uri,
+        uri,
+        registrationSecret)
+        .add(stereotype, new TestSessionFactory((id, caps) -> new Session(id, uri, new ImmutableCapabilities(), caps, Instant.now())))
         .build();
 
     CreateSessionResponse sessionResponse = node.newSession(
@@ -185,11 +190,11 @@ public class CreateSessionTest {
 
   @Test
   public void sessionDataShouldBeCorrectRegardlessOfPayloadProtocol() {
-
+    // TODO: implement sessionDataShouldBeCorrectRegardlessOfPayloadProtocol test
   }
 
   @Test
   public void shouldSupportProtocolConversion() {
-
+    // TODO: implement shouldSupportProtocolConversion test
   }
 }
